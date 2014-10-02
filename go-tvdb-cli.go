@@ -1,27 +1,32 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"os"
-	"text/tabwriter"
 	"text/template"
 
 	"github.com/codegangsta/cli"
+	"github.com/nsf/termbox-go"
 	"github.com/yanfali/go-tvdb"
 )
 
-var RowTemplate = `"{{.SeriesName}}", "{{.Genre}}", "{{.Language}}", "{{.FirstAired}}"
-`
+var RowTemplate = `{{.SeriesName | printf "%-40s"}} {{.Language | printf "%-10s"}} {{.FirstAired | printf "%-15s"}} {{.Genre}}`
 var RowCompiled = template.Must(template.New("row").Parse(RowTemplate))
 
-func printSeries(data interface{}) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', 0)
+var config tvdb.TvdbConfig
+
+var inEpisodes = false
+
+func printSeries(data interface{}) string {
+
+	w := bytes.NewBuffer([]byte{})
 	err := RowCompiled.Execute(w, data)
 	if err != nil {
 		panic(err)
 	}
-	w.Flush()
+	return w.String()
 }
 
 func init() {
@@ -75,7 +80,7 @@ func main() {
 			cli.ShowAppHelp(c)
 			return
 		}
-		config := tvdb.NewDefaultTvdbConfig()
+		config = tvdb.NewDefaultTvdbConfig()
 		if apiKey := c.String("apikey"); apiKey != "" {
 			log.Printf("Using APIKEY %q\n", apiKey)
 			config.ApiKey = apiKey
@@ -89,9 +94,50 @@ func main() {
 		if err != nil {
 			fmt.Errorf("error", err)
 		}
-		fmt.Printf("%q, %q, %q, %q\n", "Title", "Genre", "Language", "First Aired")
-		for _, series := range results.Series {
-			printSeries(series)
+
+		if len(results.Series) == 0 {
+			log.Printf("No results found for %q", c.Args()[0])
+			return
+		}
+		if err := termbox.Init(); err != nil {
+			panic(err)
+		}
+		defer termbox.Close()
+
+		drawAll(results)
+		var lastKey rune
+	loop:
+		for {
+			switch ev := termbox.PollEvent(); ev.Type {
+			case termbox.EventKey:
+				switch ev.Key {
+				case termbox.KeyEsc:
+					if inEpisodes {
+						inEpisodes = false
+						drawAll(results)
+						break
+					}
+					break loop
+				}
+				switch ev.Ch {
+				case keyZero, keyOne, keyTwo, keyThree, keyFour, keyFive, keySix, keySeven, keyEight, keyNine:
+					inEpisodes = true
+					lastKey = ev.Ch
+					if len(results.Series[lastKey-'0'].Seasons) == 0 {
+						if err := results.Series[lastKey-'0'].GetDetail(config); err != nil {
+							drawAll(results)
+							break
+						}
+					}
+					drawEpisode(lastKey, results)
+				}
+			case termbox.EventResize:
+				if inEpisodes {
+					drawEpisode(lastKey, results)
+				} else {
+					drawAll(results)
+				}
+			}
 		}
 	}
 	app.Run(os.Args)
