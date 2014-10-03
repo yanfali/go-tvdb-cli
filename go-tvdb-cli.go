@@ -51,58 +51,6 @@ GLOBAL OPTIONS:
 `
 }
 
-type stateFn func(tx *termboxState) stateFn
-
-type termboxState struct {
-	ev         termbox.Event
-	state      stateFn
-	results    *tvdb.SeriesList
-	index      int
-	lastInput  rune
-	consoleMsg string
-}
-
-func EpisodeEventHandler(tx *termboxState) stateFn {
-	switch tx.ev.Type {
-	case termbox.EventKey:
-		switch tx.ev.Key {
-		case termbox.KeyEsc:
-			tx.consoleMsg = ""
-			updateScreen(tx, drawAll)
-			return SeriesEventHandler
-		}
-	case termbox.EventResize:
-		updateScreen(tx, drawEpisode)
-	}
-	return EpisodeEventHandler
-}
-
-func SeriesEventHandler(tx *termboxState) stateFn {
-	switch tx.ev.Type {
-	case termbox.EventKey:
-		switch tx.ev.Key {
-		case termbox.KeyEsc:
-			return nil
-		}
-		switch tx.ev.Ch {
-		case keyZero, keyOne, keyTwo, keyThree, keyFour, keyFive, keySix, keySeven, keyEight, keyNine:
-			tx.lastInput = tx.ev.Ch
-			tx.index = int(tx.ev.Ch - '0')
-			if len(tx.results.Series[tx.index].Seasons) == 0 {
-				if err := tx.results.Series[tx.index].GetDetail(config); err != nil {
-					updateScreen(tx, drawAll)
-					return SeriesEventHandler
-				}
-			}
-			updateScreen(tx, drawEpisode)
-			return EpisodeEventHandler
-		}
-	case termbox.EventResize:
-		drawAll(tx)
-	}
-	return SeriesEventHandler
-}
-
 func main() {
 	app := cli.NewApp()
 	app.Name = "go-tvdb-cli"
