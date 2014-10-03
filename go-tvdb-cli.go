@@ -12,12 +12,11 @@ import (
 	"github.com/yanfali/go-tvdb"
 )
 
-var RowTemplate = `{{.SeriesName | printf "%-40s"}} {{.Language | printf "%-10s"}} {{.FirstAired | printf "%-15s"}} {{.Genre}}`
-var RowCompiled = template.Must(template.New("row").Parse(RowTemplate))
-
-var config tvdb.TvdbConfig
-
-var inEpisodes = false
+var (
+	RowTemplate = `{{.SeriesName | printf "%-40s"}} {{.Language | printf "%-10s"}} {{.FirstAired | printf "%-15s"}} {{.Genre}}`
+	RowCompiled = template.Must(template.New("row").Parse(RowTemplate))
+	config      tvdb.TvdbConfig
+)
 
 func printSeries(data interface{}) string {
 
@@ -50,6 +49,58 @@ GLOBAL OPTIONS:
    {{range .Flags}}{{.}}
    {{end}}{{end}}
 `
+}
+
+type stateFn func(tx *termboxState) stateFn
+
+type termboxState struct {
+	ev         termbox.Event
+	state      stateFn
+	results    *tvdb.SeriesList
+	index      int
+	lastInput  rune
+	consoleMsg string
+}
+
+func EpisodeEventHandler(tx *termboxState) stateFn {
+	switch tx.ev.Type {
+	case termbox.EventKey:
+		switch tx.ev.Key {
+		case termbox.KeyEsc:
+			tx.consoleMsg = ""
+			updateScreen(tx, drawAll)
+			return SeriesEventHandler
+		}
+	case termbox.EventResize:
+		updateScreen(tx, drawEpisode)
+	}
+	return EpisodeEventHandler
+}
+
+func SeriesEventHandler(tx *termboxState) stateFn {
+	switch tx.ev.Type {
+	case termbox.EventKey:
+		switch tx.ev.Key {
+		case termbox.KeyEsc:
+			return nil
+		}
+		switch tx.ev.Ch {
+		case keyZero, keyOne, keyTwo, keyThree, keyFour, keyFive, keySix, keySeven, keyEight, keyNine:
+			tx.lastInput = tx.ev.Ch
+			tx.index = int(tx.ev.Ch - '0')
+			if len(tx.results.Series[tx.index].Seasons) == 0 {
+				if err := tx.results.Series[tx.index].GetDetail(config); err != nil {
+					updateScreen(tx, drawAll)
+					return SeriesEventHandler
+				}
+			}
+			updateScreen(tx, drawEpisode)
+			return EpisodeEventHandler
+		}
+	case termbox.EventResize:
+		drawAll(tx)
+	}
+	return SeriesEventHandler
 }
 
 func main() {
@@ -94,6 +145,8 @@ func main() {
 		if err != nil {
 			fmt.Errorf("error", err)
 		}
+		var tx = &termboxState{results: &results}
+		tx.consoleMsg = fmt.Sprintf("Displaying %d results out of %d", len(results.Series), c.Int("max-results"))
 
 		if len(results.Series) == 0 {
 			log.Printf("No results found for %q", c.Args()[0])
@@ -104,39 +157,14 @@ func main() {
 		}
 		defer termbox.Close()
 
-		drawAll(results)
-		var lastKey rune
+		updateScreen(tx, drawAll)
+
+		currentState := SeriesEventHandler
 	loop:
 		for {
-			switch ev := termbox.PollEvent(); ev.Type {
-			case termbox.EventKey:
-				switch ev.Key {
-				case termbox.KeyEsc:
-					if inEpisodes {
-						inEpisodes = false
-						drawAll(results)
-						break
-					}
-					break loop
-				}
-				switch ev.Ch {
-				case keyZero, keyOne, keyTwo, keyThree, keyFour, keyFive, keySix, keySeven, keyEight, keyNine:
-					inEpisodes = true
-					lastKey = ev.Ch
-					if len(results.Series[lastKey-'0'].Seasons) == 0 {
-						if err := results.Series[lastKey-'0'].GetDetail(config); err != nil {
-							drawAll(results)
-							break
-						}
-					}
-					drawEpisode(lastKey, results)
-				}
-			case termbox.EventResize:
-				if inEpisodes {
-					drawEpisode(lastKey, results)
-				} else {
-					drawAll(results)
-				}
+			tx.ev = termbox.PollEvent()
+			if currentState = currentState(tx); currentState == nil {
+				break loop
 			}
 		}
 	}
