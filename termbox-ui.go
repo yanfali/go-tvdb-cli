@@ -43,6 +43,7 @@ func drawFlush() {
 	termbox.Flush()
 }
 
+// decorator to wrap certain termbox boilerplate
 func updateScreen(tx *termboxState, fn func(tx *termboxState)) {
 	drawClear()
 	fn(tx)
@@ -50,6 +51,7 @@ func updateScreen(tx *termboxState, fn func(tx *termboxState)) {
 	drawFlush()
 }
 
+// track cursor position
 type cursorMeta struct {
 	text    string
 	xOrigin int
@@ -57,7 +59,8 @@ type cursorMeta struct {
 	yOffset int
 }
 
-func drawCursor(tx *termboxState, curs cursorMeta) {
+// render cursor
+func drawCursor(curs cursorMeta) {
 	width, _ := termbox.Size()
 	sWidth := len(curs.text)
 	pad := width - sWidth
@@ -67,6 +70,7 @@ func drawCursor(tx *termboxState, curs cursorMeta) {
 	}
 }
 
+// render episode view
 func drawEpisode(tx *termboxState) {
 	width, height := termbox.Size()
 	if height < 20 {
@@ -93,10 +97,11 @@ func drawEpisode(tx *termboxState) {
 	s := fmt.Sprintf("%2v %2v %-70s", episode.SeasonNumber, episode.EpisodeNumber, episode.EpisodeName)
 	curs := cursorMeta{text: s, xOrigin: 1, yOrigin: 4, yOffset: tx.episodeIndex - viewOffset}
 	//tx.consoleMsg = fmt.Sprintf("vpo: %d vph: %d vpei: %d %v", viewOffset, viewPortHeight, tx.episodeIndex, curs)
-	drawCursor(tx, curs)
+	drawCursor(curs)
 }
 
-func drawAll(tx *termboxState) {
+// render series view
+func drawSeries(tx *termboxState) {
 	width, _ := termbox.Size()
 	center := width / 2
 	printTermboxString(center-len(title)/2, 1, title)
@@ -107,7 +112,7 @@ func drawAll(tx *termboxState) {
 
 	s := fmt.Sprintf("%-5d %s", tx.seriesIndex, printSeries(&tx.results.Series[tx.seriesIndex]))
 	curs := cursorMeta{text: s, xOrigin: 1, yOrigin: 5, yOffset: tx.seriesIndex}
-	drawCursor(tx, curs)
+	drawCursor(curs)
 }
 
 func printTermboxString(x, y int, s string) {

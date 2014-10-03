@@ -113,7 +113,7 @@ func main() {
 		}
 		defer termbox.Close()
 
-		updateScreen(tx, drawAll)
+		updateScreen(tx, drawSeries)
 
 		currentState := SeriesEventHandler
 	loop:

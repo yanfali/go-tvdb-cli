@@ -28,7 +28,7 @@ func EpisodeEventHandler(tx *termboxState) stateFn {
 	case termbox.EventKey:
 		switch tx.ev.Key {
 		case termbox.KeyEsc, termbox.KeyArrowLeft:
-			return eventSeries(tx)
+			return transitionToSeriesState(tx)
 		case termbox.KeyArrowUp:
 			episodeCursorUp(tx)
 		case termbox.KeyArrowDown:
@@ -36,7 +36,7 @@ func EpisodeEventHandler(tx *termboxState) stateFn {
 		}
 		switch tx.ev.Ch {
 		case keyh:
-			return eventSeries(tx)
+			return transitionToSeriesState(tx)
 		case keyj:
 			episodeCursorDown(tx)
 		case keyk:
@@ -48,11 +48,11 @@ func EpisodeEventHandler(tx *termboxState) stateFn {
 	return EpisodeEventHandler
 }
 
-func eventEpisode(tx *termboxState) stateFn {
+func transitionToEpisodeState(tx *termboxState) stateFn {
 	tx.index = tx.seriesIndex
 	if err := fetchSeasons(tx); err != nil {
 		tx.consoleMsg = fmt.Sprintf("%v", err)
-		updateScreen(tx, drawAll)
+		updateScreen(tx, drawSeries)
 		return SeriesEventHandler
 	}
 	updateScreen(tx, drawEpisode)
