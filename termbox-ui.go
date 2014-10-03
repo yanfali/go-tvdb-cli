@@ -8,10 +8,10 @@ package main
 // add a way to look at the details for a specific episode
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/nsf/termbox-go"
-	"github.com/yanfali/go-tvdb"
 )
 
 var (
@@ -25,6 +25,10 @@ var (
 	keySeven = rune('7')
 	keyEight = rune('8')
 	keyNine  = rune('9')
+	keyh     = rune('h')
+	keyj     = rune('j')
+	keyk     = rune('k')
+	keyl     = rune('l')
 )
 
 const (
@@ -46,22 +50,50 @@ func updateScreen(tx *termboxState, fn func(tx *termboxState)) {
 	drawFlush()
 }
 
-func drawEpisode(tx *termboxState) {
+type cursorMeta struct {
+	text    string
+	xOrigin int
+	yOrigin int
+	yOffset int
+}
+
+func drawCursor(tx *termboxState, curs cursorMeta) {
 	width, _ := termbox.Size()
+	sWidth := len(curs.text)
+	pad := width - sWidth
+	s := curs.text + strings.Repeat(" ", pad)
+	for x, r := range s {
+		termbox.SetCell(1+x, 4+curs.yOffset, r, termbox.ColorBlack, termbox.ColorYellow)
+	}
+}
+
+func drawEpisode(tx *termboxState) {
+	width, height := termbox.Size()
+	if height < 20 {
+		// render window no smaller than 20 rows
+		height = 20
+	}
 	center := width / 2
 	printTermboxString(center-len(title)/2, 0, title)
 	series := tx.results.Series[tx.index]
-
-	printTermboxString(1, 2, printSeries(series))
-	allEpisodes := []tvdb.Episode{}
-	for _, episodes := range series.Seasons {
-		allEpisodes = append(allEpisodes, episodes...)
+	var viewOffset = 0
+	var viewPortHeight = int(math.Min(float64(len(tx.allEpisodes)), float64(height-6))) // make sure we can't overflow slice
+	if tx.episodeIndex+1 >= viewPortHeight {
+		// if episode index has moved beyond view port change view offset and slice allEpisodes differently
+		viewOffset = tx.episodeIndex + 1 - viewPortHeight
 	}
-	By(seasonAndEpisode).Sort(allEpisodes)
-	tx.consoleMsg = fmt.Sprintf("%d Seasons. %d Episodes", len(series.Seasons), len(allEpisodes))
-	for row, episode := range allEpisodes {
+	printTermboxString(1, 2, printSeries(&series))
+	tx.consoleMsg = fmt.Sprintf("%d Seasons. %d Episodes", len(series.Seasons), tx.totalEpisodes)
+
+	for row, episode := range tx.allEpisodes[viewOffset : viewOffset+viewPortHeight] {
+		episode.EpisodeName = ellipsisString(episode.EpisodeName, 70)
 		printTermboxString(1, 4+row, fmt.Sprintf("%2v %2v %-70s", episode.SeasonNumber, episode.EpisodeNumber, episode.EpisodeName))
 	}
+	episode := tx.allEpisodes[tx.episodeIndex]
+	s := fmt.Sprintf("%2v %2v %-70s", episode.SeasonNumber, episode.EpisodeNumber, episode.EpisodeName)
+	curs := cursorMeta{text: s, xOrigin: 1, yOrigin: 4, yOffset: tx.episodeIndex - viewOffset}
+	//tx.consoleMsg = fmt.Sprintf("vpo: %d vph: %d vpei: %d %v", viewOffset, viewPortHeight, tx.episodeIndex, curs)
+	drawCursor(tx, curs)
 }
 
 func drawAll(tx *termboxState) {
@@ -70,8 +102,12 @@ func drawAll(tx *termboxState) {
 	printTermboxString(center-len(title)/2, 1, title)
 	printTermboxString(1, 3, fmt.Sprintf("%-5s %-40s %-10s %-15s %s", "Index", "Title", "Language", "First Aired", "Genre"))
 	for row, series := range tx.results.Series {
-		printTermboxString(1, 4+row, fmt.Sprintf("%-5d %s", row, printSeries(series)))
+		printTermboxString(1, 4+row, fmt.Sprintf("%-5d %s", row, printSeries(&series)))
 	}
+
+	s := fmt.Sprintf("%-5d %s", tx.seriesIndex, printSeries(&tx.results.Series[tx.seriesIndex]))
+	curs := cursorMeta{text: s, xOrigin: 1, yOrigin: 5, yOffset: tx.seriesIndex}
+	drawCursor(tx, curs)
 }
 
 func printTermboxString(x, y int, s string) {

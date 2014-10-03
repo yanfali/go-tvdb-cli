@@ -18,10 +18,18 @@ var (
 	config      tvdb.TvdbConfig
 )
 
-func printSeries(data interface{}) string {
+func ellipsisString(source string, length int) string {
+	if len(source) > length {
+		return fmt.Sprintf("%."+string(length-4)+"s...", source)
+	}
+	return source
+}
+
+func printSeries(series *tvdb.Series) string {
 
 	w := bytes.NewBuffer([]byte{})
-	err := RowCompiled.Execute(w, data)
+	series.SeriesName = ellipsisString(series.SeriesName, 40)
+	err := RowCompiled.Execute(w, series)
 	if err != nil {
 		panic(err)
 	}
