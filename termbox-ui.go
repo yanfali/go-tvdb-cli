@@ -70,18 +70,22 @@ func drawCursor(curs cursorMeta) {
 	}
 }
 
-// render episode view
-func drawEpisode(tx *termboxState) {
-	width, height := termbox.Size()
+func getViewPortSize(tx *termboxState) (width int, height int) {
+	width, height = termbox.Size()
 	if height < 20 {
 		// render window no smaller than 20 rows
 		height = 20
 	}
-	center := width / 2
-	printTermboxString(center-len(title)/2, 0, title)
+	return width, int(math.Min(float64(len(tx.allEpisodes)), float64(height-6))) // make sure we can't overflow slice
+}
+
+// render episode view
+func drawEpisode(tx *termboxState) {
 	series := tx.results.Series[tx.index]
 	var viewOffset = 0
-	var viewPortHeight = int(math.Min(float64(len(tx.allEpisodes)), float64(height-6))) // make sure we can't overflow slice
+	var width, viewPortHeight = getViewPortSize(tx)
+	center := width / 2
+	printTermboxString(center-len(title)/2, 0, title)
 	if tx.episodeIndex+1 >= viewPortHeight {
 		// if episode index has moved beyond view port change view offset and slice allEpisodes differently
 		viewOffset = tx.episodeIndex + 1 - viewPortHeight
