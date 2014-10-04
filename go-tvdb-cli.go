@@ -71,8 +71,8 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "apikey, k",
-			Value: "",
-			Usage: "thetvdb.com [uses default from go-tvdb]",
+			Value: "90CCCAB7A2B7509E",
+			Usage: "thetvdb.com API key",
 		},
 		cli.StringFlag{
 			Name:  "language, l",
