@@ -11,31 +11,31 @@ import (
 func episodeCursorUp(tx *termboxState) {
 	if tx.episodeIndex > 0 {
 		tx.episodeIndex--
+		updateScreen(tx, drawEpisode)
 	}
-	updateScreen(tx, drawEpisode)
 }
 
 func episodeCursorDown(tx *termboxState) {
 	if tx.episodeIndex < tx.totalEpisodes-1 {
 		tx.episodeIndex++
+		updateScreen(tx, drawEpisode)
 	}
-	updateScreen(tx, drawEpisode)
 }
 
 func episodeCursorPgup(tx *termboxState) {
 	_, height := getViewPortSize(tx)
 	if tx.totalEpisodes > height {
 		tx.episodeIndex = int(math.Max(float64(tx.episodeIndex-height), float64(0)))
+		updateScreen(tx, drawEpisode)
 	}
-	updateScreen(tx, drawEpisode)
 }
 
 func episodeCursorPgdn(tx *termboxState) {
 	_, height := getViewPortSize(tx)
 	if tx.totalEpisodes > height {
 		tx.episodeIndex = int(math.Min(float64(tx.episodeIndex+height), float64(tx.totalEpisodes-1)))
+		updateScreen(tx, drawEpisode)
 	}
-	updateScreen(tx, drawEpisode)
 }
 
 // When inside the Episode UI this is the termbox event handler
@@ -62,6 +62,16 @@ func EpisodeEventHandler(tx *termboxState) stateFn {
 			episodeCursorDown(tx)
 		case keyk:
 			episodeCursorUp(tx)
+		case keyQuestion: // jump to key help
+			tx.Push(func(tx *termboxState) stateFn {
+				// use a closure on the stack so we can redraw the
+				// screen correctly. This means the caller of the pop'ed
+				// function *must* execute it and return the result
+				updateScreen(tx, drawEpisode)
+				return EpisodeEventHandler
+			})
+			updateScreen(tx, drawHelp)
+			return HelpEventHandler(tx)
 		}
 	case termbox.EventResize:
 		updateScreen(tx, drawEpisode)

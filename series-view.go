@@ -30,15 +30,15 @@ func fetchSeasons(tx *termboxState) error {
 func seriesCursorUp(tx *termboxState) {
 	if tx.seriesIndex > 0 {
 		tx.seriesIndex--
+		updateScreen(tx, drawSeries)
 	}
-	updateScreen(tx, drawSeries)
 }
 
 func seriesCursorDown(tx *termboxState) {
 	if tx.seriesIndex < len(tx.results.Series)-1 {
 		tx.seriesIndex++
+		updateScreen(tx, drawSeries)
 	}
-	updateScreen(tx, drawSeries)
 }
 
 // When inside the Series UI this is the termbox event handler
@@ -62,6 +62,16 @@ func SeriesEventHandler(tx *termboxState) stateFn {
 			seriesCursorUp(tx)
 		case keyl:
 			return transitionToEpisodeState(tx)
+		case keyQuestion: // jump to key help
+			tx.Push(func(tx *termboxState) stateFn {
+				// use a closure on the stack so we can redraw the
+				// screen correctly. This means the caller of the pop'ed
+				// function *must* execute it and return the result
+				updateScreen(tx, drawSeries)
+				return SeriesEventHandler
+			})
+			updateScreen(tx, drawHelp)
+			return HelpEventHandler(tx)
 		}
 	case termbox.EventResize:
 		updateScreen(tx, drawSeries)
@@ -71,6 +81,8 @@ func SeriesEventHandler(tx *termboxState) stateFn {
 
 func transitionToEpisodeState(tx *termboxState) stateFn {
 	tx.index = tx.seriesIndex
+	tx.consoleMsg = fmt.Sprintf("Fetching Season data for %s", tx.results.Series[tx.index].SeriesName)
+	termbox.Flush()
 	if err := fetchSeasons(tx); err != nil {
 		tx.consoleMsg = fmt.Sprintf("%v", err)
 		updateScreen(tx, drawSeries)
