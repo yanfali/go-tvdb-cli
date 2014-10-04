@@ -2,11 +2,7 @@ package main
 
 // Episode UI state management
 
-import (
-	"fmt"
-
-	"github.com/nsf/termbox-go"
-)
+import "github.com/nsf/termbox-go"
 
 func episodeCursorUp(tx *termboxState) {
 	if tx.episodeIndex > 0 {
@@ -48,13 +44,7 @@ func EpisodeEventHandler(tx *termboxState) stateFn {
 	return EpisodeEventHandler
 }
 
-func transitionToEpisodeState(tx *termboxState) stateFn {
-	tx.index = tx.seriesIndex
-	if err := fetchSeasons(tx); err != nil {
-		tx.consoleMsg = fmt.Sprintf("%v", err)
-		updateScreen(tx, drawSeries)
-		return SeriesEventHandler
-	}
-	updateScreen(tx, drawEpisode)
-	return EpisodeEventHandler
+func transitionToSeriesState(tx *termboxState) stateFn {
+	updateScreen(tx, drawSeries)
+	return SeriesEventHandler
 }

@@ -4,6 +4,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/nsf/termbox-go"
 	"github.com/yanfali/go-tvdb"
@@ -40,11 +41,6 @@ func seriesCursorDown(tx *termboxState) {
 	updateScreen(tx, drawSeries)
 }
 
-func transitionToSeriesState(tx *termboxState) stateFn {
-	updateScreen(tx, drawSeries)
-	return SeriesEventHandler
-}
-
 // When inside the Series UI this is the termbox event handler
 func SeriesEventHandler(tx *termboxState) stateFn {
 	switch tx.ev.Type {
@@ -71,4 +67,15 @@ func SeriesEventHandler(tx *termboxState) stateFn {
 		updateScreen(tx, drawSeries)
 	}
 	return SeriesEventHandler
+}
+
+func transitionToEpisodeState(tx *termboxState) stateFn {
+	tx.index = tx.seriesIndex
+	if err := fetchSeasons(tx); err != nil {
+		tx.consoleMsg = fmt.Sprintf("%v", err)
+		updateScreen(tx, drawSeries)
+		return SeriesEventHandler
+	}
+	updateScreen(tx, drawEpisode)
+	return EpisodeEventHandler
 }
