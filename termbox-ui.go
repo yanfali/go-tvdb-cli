@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/nsf/termbox-go"
+	"github.com/yanfali/go-tvdb"
 )
 
 var (
@@ -81,6 +82,10 @@ func getViewPortSize(tx *termboxState) (width int, height int) {
 	return width, int(math.Min(float64(len(tx.allEpisodes)), float64(height-6))) // make sure we can't overflow slice
 }
 
+func episodeMatch(episode *tvdb.Episode, searchText string) bool {
+	return searchText != "" && strings.Contains(strings.ToLower(episode.EpisodeName), strings.ToLower(searchText))
+}
+
 // render episode view
 func drawEpisode(tx *termboxState) {
 	series := tx.results.Series[tx.index]
@@ -94,17 +99,32 @@ func drawEpisode(tx *termboxState) {
 	}
 	printTermboxString(1, 2, printSeries(&series))
 
+	matchCount := 0
 	if tx.searchText != "" {
+		// count up searches across entire collection
+		for _, episode := range tx.allEpisodes {
+			if episodeMatch(&episode, tx.searchText) {
+				matchCount++
+			}
+		}
+		if matchCount > 0 {
+			printTermboxString(0, 0, fmt.Sprintf("%d matches out of %d", matchCount, len(tx.allEpisodes)))
+		}
 	}
 
 	for row, episode := range tx.allEpisodes[viewOffset : viewOffset+viewPortHeight] {
 		episode.EpisodeName = ellipsisString(episode.EpisodeName, 70)
-		printTermboxString(1, 4+row, fmt.Sprintf("%2v %2v %-70s", episode.SeasonNumber, episode.EpisodeNumber, episode.EpisodeName))
+		fg := termbox.ColorWhite
+		bg := termbox.ColorDefault
+		if matchCount > 0 && episodeMatch(&episode, tx.searchText) {
+			// highlight visible searches
+			fg |= termbox.AttrReverse
+		}
+		printTermboxStringAttr(1, 4+row, fmt.Sprintf("%2v %2v %-70s", episode.SeasonNumber, episode.EpisodeNumber, episode.EpisodeName), fg, bg)
 	}
 	episode := tx.allEpisodes[tx.episodeIndex]
 	s := fmt.Sprintf("%2v %2v %-70s", episode.SeasonNumber, episode.EpisodeNumber, episode.EpisodeName)
 	curs := cursorMeta{text: s, xOrigin: 1, yOrigin: 4, yOffset: tx.episodeIndex - viewOffset}
-	//tx.consoleMsg = fmt.Sprintf("vpo: %d vph: %d vpei: %d %v", viewOffset, viewPortHeight, tx.episodeIndex, curs)
 	drawCursor(curs)
 }
 
@@ -112,7 +132,7 @@ func drawEpisode(tx *termboxState) {
 func drawSeries(tx *termboxState) {
 	width, _ := termbox.Size()
 	center := width / 2
-	printTermboxString(center-len(title)/2, 1, title)
+	printTermboxStringAttr(center-len(title)/2, 1, title, termbox.ColorWhite|termbox.AttrUnderline, termbox.ColorDefault)
 	printTermboxString(1, 3, fmt.Sprintf("%-5s %-40s %-10s %-15s %s", "Index", "Title", "Language", "First Aired", "Genre"))
 	for row, series := range tx.results.Series {
 		printTermboxString(1, 4+row, fmt.Sprintf("%-5d %s", row, printSeries(&series)))
@@ -123,9 +143,13 @@ func drawSeries(tx *termboxState) {
 	drawCursor(curs)
 }
 
-func printTermboxString(x, y int, s string) {
+func printTermboxStringAttr(x, y int, s string, fg termbox.Attribute, bg termbox.Attribute) {
 	for _, r := range s {
-		termbox.SetCell(x, y, r, termbox.ColorWhite, termbox.ColorDefault)
+		termbox.SetCell(x, y, r, fg, bg)
 		x += 1
 	}
+}
+
+func printTermboxString(x, y int, s string) {
+	printTermboxStringAttr(x, y, s, termbox.ColorWhite, termbox.ColorDefault)
 }

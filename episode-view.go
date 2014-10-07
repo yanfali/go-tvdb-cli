@@ -4,6 +4,7 @@ package main
 
 import (
 	"math"
+	"strings"
 
 	"github.com/nsf/termbox-go"
 )
@@ -99,17 +100,22 @@ func SearchEpisodeEventHandler(tx *termboxState) stateFn {
 	case termbox.EventKey:
 		switch tx.ev.Key {
 		case termbox.KeyEsc:
+			tx.searchText = ""
 			tx.consoleFn = episodeConsoleFn
 			updateScreen(tx, drawEpisode)
 			return EpisodeEventHandler
 		case termbox.KeyArrowUp:
 			episodeCursorUp(tx)
+			return SearchEpisodeEventHandler
 		case termbox.KeyArrowDown:
 			episodeCursorDown(tx)
+			return SearchEpisodeEventHandler
 		case termbox.KeyPgup, termbox.KeyCtrlB:
 			episodeCursorPgup(tx)
+			return SearchEpisodeEventHandler
 		case termbox.KeyPgdn, termbox.KeyCtrlF:
 			episodeCursorPgdn(tx)
+			return SearchEpisodeEventHandler
 		case termbox.KeyBackspace, termbox.KeyBackspace2, termbox.KeyDelete:
 			l := len(tx.searchText)
 			if l > 0 {
@@ -120,8 +126,11 @@ func SearchEpisodeEventHandler(tx *termboxState) stateFn {
 		}
 		switch tx.ev.Ch {
 		default:
-			tx.searchText += string(tx.ev.Ch)
-			updateScreen(tx, drawEpisode)
+			if strings.ContainsRune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwyxz0123456789", tx.ev.Ch) {
+				// white list
+				tx.searchText += string(tx.ev.Ch)
+				updateScreen(tx, drawEpisode)
+			}
 		}
 	case termbox.EventResize:
 		updateScreen(tx, drawEpisode)
