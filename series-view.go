@@ -81,13 +81,15 @@ func SeriesEventHandler(tx *termboxState) stateFn {
 
 func transitionToEpisodeState(tx *termboxState) stateFn {
 	tx.index = tx.seriesIndex
-	tx.consoleMsg = fmt.Sprintf("Fetching Season data for %s", tx.results.Series[tx.index].SeriesName)
 	termbox.Flush()
 	if err := fetchSeasons(tx); err != nil {
-		tx.consoleMsg = fmt.Sprintf("%v", err)
+		tx.consoleFn = func(*termboxState) string {
+			return fmt.Sprintf("%v", err)
+		}
 		updateScreen(tx, drawSeries)
 		return SeriesEventHandler
 	}
+	tx.consoleFn = episodeConsoleFn
 	updateScreen(tx, drawEpisode)
 	return EpisodeEventHandler
 }

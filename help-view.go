@@ -56,5 +56,5 @@ func drawHelp(tx *termboxState) {
 	for row, help := range helpData {
 		printTermboxString(0, row+3, fmt.Sprintf("%-20s %s", help.keys, help.text))
 	}
-	tx.consoleMsg = ""
+	tx.consoleFn = emptyConsoleFn
 }

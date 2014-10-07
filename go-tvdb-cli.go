@@ -103,7 +103,9 @@ func main() {
 			fmt.Errorf("error", err)
 		}
 		var tx = &termboxState{results: &results}
-		tx.consoleMsg = fmt.Sprintf("Displaying %d results out of %d", len(results.Series), c.Int("max-results"))
+		tx.consoleFn = func(*termboxState) string {
+			return fmt.Sprintf("Displaying %d results out of %d", len(results.Series), c.Int("max-results"))
+		}
 
 		if len(results.Series) == 0 {
 			log.Printf("No results found for %q", c.Args()[0])

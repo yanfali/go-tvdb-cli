@@ -16,16 +16,16 @@ type stateFn func(tx *termboxState) stateFn
 
 // Track the state machine context
 type termboxState struct {
-	ev            termbox.Event    // last recorded event
-	results       *tvdb.SeriesList // current results from thetvdb.com
-	index         int              // current index into the results
-	lastInput     rune             // last character typed
-	consoleMsg    string           // current console message
-	seriesIndex   int              // current index into series
-	episodeIndex  int              // current index into episodes
-	totalEpisodes int              // total episodes in current series view
-	allEpisodes   []tvdb.Episode   // all episodes for current series
-	stateFnStack  []stateFn        // stack of functions
+	ev            termbox.Event              // last recorded event
+	results       *tvdb.SeriesList           // current results from thetvdb.com
+	index         int                        // current index into the results
+	lastInput     rune                       // last character typed
+	consoleFn     func(*termboxState) string // dynamic console message
+	seriesIndex   int                        // current index into series
+	episodeIndex  int                        // current index into episodes
+	totalEpisodes int                        // total episodes in current series view
+	allEpisodes   []tvdb.Episode             // all episodes for current series
+	stateFnStack  []stateFn                  // stack of functions
 	searchText    string
 	blink         bool
 }

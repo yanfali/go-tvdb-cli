@@ -93,7 +93,9 @@ func drawEpisode(tx *termboxState) {
 		viewOffset = tx.episodeIndex + 1 - viewPortHeight
 	}
 	printTermboxString(1, 2, printSeries(&series))
-	tx.consoleMsg = fmt.Sprintf("%d Seasons. %d Episodes", len(series.Seasons), tx.totalEpisodes)
+
+	if tx.searchText != "" {
+	}
 
 	for row, episode := range tx.allEpisodes[viewOffset : viewOffset+viewPortHeight] {
 		episode.EpisodeName = ellipsisString(episode.EpisodeName, 70)
@@ -126,25 +128,4 @@ func printTermboxString(x, y int, s string) {
 		termbox.SetCell(x, y, r, termbox.ColorWhite, termbox.ColorDefault)
 		x += 1
 	}
-}
-
-func printConsoleString(tx *termboxState) {
-	width, height := termbox.Size()
-	sWidth := len(tx.consoleMsg)
-	pad := width - sWidth
-	s := tx.consoleMsg + strings.Repeat(" ", pad)
-	for x, r := range s {
-		termbox.SetCell(x, height-1, r, termbox.ColorWhite, termbox.ColorBlue)
-	}
-}
-
-func cursorBlink(tx *termboxState) {
-	_, height := termbox.Size()
-	x := len(tx.consoleMsg)
-	color := termbox.ColorBlue
-	if tx.blink {
-		color = termbox.ColorWhite
-	}
-	tx.blink = !tx.blink
-	termbox.SetCell(x, height-1, rune(' '), color, color)
 }
