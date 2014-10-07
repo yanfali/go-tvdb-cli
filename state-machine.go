@@ -26,6 +26,8 @@ type termboxState struct {
 	totalEpisodes int              // total episodes in current series view
 	allEpisodes   []tvdb.Episode   // all episodes for current series
 	stateFnStack  []stateFn        // stack of functions
+	searchText    string
+	blink         bool
 }
 
 // push a state function onto a stack

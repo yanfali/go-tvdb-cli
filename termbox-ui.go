@@ -30,6 +30,7 @@ var (
 	keyk        = rune('k')
 	keyl        = rune('l')
 	keyQuestion = rune('?')
+	keySearch   = rune('/')
 )
 
 const (
@@ -135,4 +136,15 @@ func printConsoleString(tx *termboxState) {
 	for x, r := range s {
 		termbox.SetCell(x, height-1, r, termbox.ColorWhite, termbox.ColorBlue)
 	}
+}
+
+func cursorBlink(tx *termboxState) {
+	_, height := termbox.Size()
+	x := len(tx.consoleMsg)
+	color := termbox.ColorBlue
+	if tx.blink {
+		color = termbox.ColorWhite
+	}
+	tx.blink = !tx.blink
+	termbox.SetCell(x, height-1, rune(' '), color, color)
 }

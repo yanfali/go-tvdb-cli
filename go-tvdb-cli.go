@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"text/template"
+	"time"
 
 	"github.com/codegangsta/cli"
 	"github.com/nsf/termbox-go"
@@ -116,13 +117,29 @@ func main() {
 		updateScreen(tx, drawSeries)
 
 		currentState := SeriesEventHandler
+		ch := getPollEventChan()
 	loop:
 		for {
-			tx.ev = termbox.PollEvent()
-			if currentState = currentState(tx); currentState == nil {
-				break loop
+			select {
+			case tx.ev = <-ch:
+				if currentState = currentState(tx); currentState == nil {
+					break loop
+				}
+			case <-time.After(time.Second / 2):
+				cursorBlink(tx)
+				termbox.Flush()
 			}
 		}
 	}
 	app.Run(os.Args)
+}
+
+func getPollEventChan() chan termbox.Event {
+	var ch = make(chan termbox.Event)
+	go func() {
+		for {
+			ch <- termbox.PollEvent()
+		}
+	}()
+	return ch
 }
