@@ -128,7 +128,12 @@ func SearchEpisodeEventHandler(tx *termboxState) stateFn {
 				updateScreen(tx, drawEpisode)
 				return SearchEpisodeEventHandler
 			}
+		case termbox.KeySpace:
+			tx.searchText += " "
+			updateScreen(tx, drawEpisode)
+			return SearchEpisodeEventHandler
 		}
+
 		switch tx.ev.Ch {
 		default:
 			if strings.ContainsRune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwyxz0123456789", tx.ev.Ch) {
