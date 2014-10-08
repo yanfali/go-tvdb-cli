@@ -49,12 +49,14 @@ var helpData = []help{
 	{"Up Arrow, k", "Move cursor up"},
 	{"Down Arrow, j", "Move cursor down"},
 	{"Right Arrow, l", "Down to next level"},
+	{"/", "Search in Episode"},
 }
 
 func drawHelp(tx *termboxState) {
-
+	printTitleString(HELP_TITLE)
 	for row, help := range helpData {
-		printTermboxString(0, row+3, fmt.Sprintf("%-20s %s", help.keys, help.text))
+		s := fmt.Sprintf("%-20s %s", help.keys, help.text)
+		printTermboxString(5, row+3, s)
 	}
 	tx.consoleFn = emptyConsoleFn
 }

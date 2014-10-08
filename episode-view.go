@@ -54,7 +54,9 @@ func EpisodeEventHandler(tx *termboxState) stateFn {
 			episodeCursorPgup(tx)
 		case termbox.KeyPgdn, termbox.KeyCtrlF:
 			episodeCursorPgdn(tx)
-
+		case termbox.KeyEnter, termbox.KeyArrowRight:
+			updateScreen(tx, drawDetails)
+			return DetailEventHandler
 		}
 		switch tx.ev.Ch {
 		case keyh:
@@ -63,6 +65,9 @@ func EpisodeEventHandler(tx *termboxState) stateFn {
 			episodeCursorDown(tx)
 		case keyk:
 			episodeCursorUp(tx)
+		case keyl:
+			updateScreen(tx, drawDetails)
+			return DetailEventHandler
 		case keyQuestion: // jump to key help
 			tx.Push(func(tx *termboxState) stateFn {
 				// use a closure on the stack so we can redraw the

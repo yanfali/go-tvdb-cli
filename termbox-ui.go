@@ -9,6 +9,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/nsf/termbox-go"
@@ -35,7 +36,9 @@ var (
 )
 
 const (
-	title = "go-tvdb-cli edition"
+	MAIN_TITLE   = "go-tvdb-cli edition"
+	HELP_TITLE   = "go-tvdb-cli Help"
+	DETAIL_TITLE = "go-tvdb-cli Details"
 )
 
 func drawClear() {
@@ -65,9 +68,7 @@ type cursorMeta struct {
 // render cursor
 func drawCursor(curs cursorMeta) {
 	width, _ := termbox.Size()
-	sWidth := len(curs.text)
-	pad := width - sWidth
-	s := curs.text + strings.Repeat(" ", pad)
+	s := fmt.Sprintf("%-"+strconv.Itoa(width)+"s", curs.text)
 	for x, r := range s {
 		termbox.SetCell(1+x, 4+curs.yOffset, r, termbox.ColorBlack, termbox.ColorYellow)
 	}
@@ -92,7 +93,7 @@ func drawEpisode(tx *termboxState) {
 	var viewOffset = 0
 	var width, viewPortHeight = getViewPortSize(tx)
 	center := width / 2
-	printTermboxString(center-len(title)/2, 0, title)
+	printTermboxString(center-len(MAIN_TITLE)/2, 0, MAIN_TITLE)
 	if tx.episodeIndex+1 >= viewPortHeight {
 		// if episode index has moved beyond view port change view offset and slice allEpisodes differently
 		viewOffset = tx.episodeIndex + 1 - viewPortHeight
@@ -128,11 +129,15 @@ func drawEpisode(tx *termboxState) {
 	drawCursor(curs)
 }
 
-// render series view
-func drawSeries(tx *termboxState) {
+func printTitleString(title string) {
 	width, _ := termbox.Size()
 	center := width / 2
 	printTermboxStringAttr(center-len(title)/2, 1, title, termbox.ColorWhite|termbox.AttrUnderline, termbox.ColorDefault)
+}
+
+// render series view
+func drawSeries(tx *termboxState) {
+	printTitleString(MAIN_TITLE)
 	printTermboxString(1, 3, fmt.Sprintf("%-5s %-40s %-10s %-15s %s", "Index", "Title", "Language", "First Aired", "Genre"))
 	for row, series := range tx.results.Series {
 		printTermboxString(1, 4+row, fmt.Sprintf("%-5d %s", row, printSeries(&series)))
@@ -141,6 +146,66 @@ func drawSeries(tx *termboxState) {
 	s := fmt.Sprintf("%-5d %s", tx.seriesIndex, printSeries(&tx.results.Series[tx.seriesIndex]))
 	curs := cursorMeta{text: s, xOrigin: 1, yOrigin: 5, yOffset: tx.seriesIndex}
 	drawCursor(curs)
+}
+
+// Return a function that returns the supplied value once per invocatin
+// repeated calls to the function return an empty string
+// inspired by underscore.js
+func once(value string) func() string {
+	notDone := true
+	return func() string {
+		if notDone {
+			notDone = false
+			return value
+		}
+		return ""
+	}
+}
+
+func printDetailAttributePair(key, value string, row int) {
+	width, _ := termbox.Size()
+	values := []string{}
+	width -= 30
+	if len(value) > width {
+		// format longer strings into chunks of width length.
+		// not smart about content and doesn't try to look for a break
+		valLen := float64(len(value))
+		for start, end := 0, width; start < int(valLen); start += width {
+			values = append(values, value[start:end])
+			end = int(math.Min(float64(end+width), valLen))
+		}
+		keyFn := once(key)
+		for _, val := range values {
+			printTermboxStringAttr(5, row, fmt.Sprintf("%-20s", keyFn()), termbox.ColorWhite, termbox.ColorBlue)
+			printTermboxStringAttr(25, row, fmt.Sprintf("%-"+strconv.Itoa(width)+"s", val), termbox.ColorBlue, termbox.ColorWhite)
+			row++
+		}
+	} else {
+		printTermboxStringAttr(5, row, fmt.Sprintf("%-20s", key), termbox.ColorWhite, termbox.ColorBlue)
+		printTermboxStringAttr(25, row, fmt.Sprintf("%-"+strconv.Itoa(width)+"s", value), termbox.ColorBlue, termbox.ColorWhite)
+	}
+}
+
+type pairs struct {
+	Key   string
+	Value string
+}
+
+func drawDetails(tx *termboxState) {
+	printTitleString(DETAIL_TITLE)
+	rowStart := 4
+	episode := tx.allEpisodes[tx.episodeIndex]
+	pairs := []pairs{
+		{"Id", strconv.FormatInt(int64(episode.Id), 10)},
+		{"Name", episode.EpisodeName},
+		{"First Aired", episode.FirstAired},
+		{"Season", strconv.FormatInt(int64(episode.SeasonNumber), 10)},
+		{"Episode", strconv.FormatInt(int64(episode.EpisodeNumber), 10)},
+		{"Overview", episode.Overview},
+	}
+	for index, pair := range pairs {
+		printDetailAttributePair(pair.Key, pair.Value, rowStart+index)
+	}
 }
 
 func printTermboxStringAttr(x, y int, s string, fg termbox.Attribute, bg termbox.Attribute) {
