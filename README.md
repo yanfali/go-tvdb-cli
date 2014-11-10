@@ -3,6 +3,8 @@ go-tvdb-cli
 
 A simple wrapper for go-tvdb so I can use thetvdb.com from the CLI
 
+![screenshot](https://github.com/yanfali/go-tvdb-cli/raw/master/screenshot.png)
+
 Features
 ========
 
